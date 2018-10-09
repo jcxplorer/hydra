@@ -62,9 +62,9 @@ func NewFositeSQLStore(m client.Manager,
 	}
 }
 
-func sqlSchemaUp(table string, id string) string {
-	schemas := map[string]string{
-		"1": fmt.Sprintf(`CREATE TABLE IF NOT EXISTS hydra_oauth2_%s (
+func sqlSchemaUp(db, table, id string) string {
+	shared := []string{
+		 fmt.Sprintf(`CREATE TABLE IF NOT EXISTS hydra_oauth2_%s (
 	signature      	varchar(255) NOT NULL PRIMARY KEY,
 	request_id  	varchar(255) NOT NULL,
 	requested_at  	timestamp NOT NULL DEFAULT now(),
@@ -74,8 +74,8 @@ func sqlSchemaUp(table string, id string) string {
 	form_data  		text NOT NULL,
 	session_data  	text NOT NULL
 )`, table),
-		"2": fmt.Sprintf("ALTER TABLE hydra_oauth2_%s ADD subject varchar(255) NOT NULL DEFAULT ''", table),
-		"3": `CREATE TABLE IF NOT EXISTS hydra_oauth2_pkce (
+		fmt.Sprintf("ALTER TABLE hydra_oauth2_%s ADD subject varchar(255) NOT NULL DEFAULT ''", table),
+		`CREATE TABLE IF NOT EXISTS hydra_oauth2_pkce (
 	signature      	varchar(255) NOT NULL PRIMARY KEY,
 	request_id  	varchar(255) NOT NULL,
 	requested_at  	timestamp NOT NULL DEFAULT now(),
@@ -86,25 +86,63 @@ func sqlSchemaUp(table string, id string) string {
 	session_data  	text NOT NULL,
 	subject 		varchar(255) NOT NULL
 )`,
-		"4": fmt.Sprintf("ALTER TABLE hydra_oauth2_%s ADD active BOOL NOT NULL DEFAULT TRUE", table),
-		"5": fmt.Sprintf("CREATE UNIQUE INDEX hydra_oauth2_%s_request_id_idx ON hydra_oauth2_%s (request_id)", table, table),
-		"6": fmt.Sprintf("CREATE INDEX hydra_oauth2_%s_requested_at_idx ON hydra_oauth2_%s (requested_at)", table, table),
+		fmt.Sprintf("ALTER TABLE hydra_oauth2_%s ADD active BOOL NOT NULL DEFAULT TRUE", table),
+		fmt.Sprintf("CREATE UNIQUE INDEX hydra_oauth2_%s_request_id_idx ON hydra_oauth2_%s (request_id)", table, table),
+		fmt.Sprintf("CREATE INDEX hydra_oauth2_%s_requested_at_idx ON hydra_oauth2_%s (requested_at)", table, table),
 	}
 
-	return schemas[id]
+	m := map[string]map[string]string{
+		"mysql": {
+			"1": shared[0],
+			"2": shared[1],
+			"3": shared[2],
+			"4": shared[3],
+			"5": shared[4],
+			"6": shared[5],
+		},
+		"postgres": {
+			"1": shared[0],
+			"2": shared[1],
+			"3": shared[2],
+			"4": shared[3],
+			"5": shared[4],
+			"6": shared[5],
+		},
+	}
+
+	return m[db][id]
 }
 
-func sqlSchemaDown(table string, id string) string {
-	schemas := map[string]string{
-		"1": fmt.Sprintf(`DROP TABLE %s)`, table),
-		"2": fmt.Sprintf("ALTER TABLE hydra_oauth2_%s DROP COLUMN subject", table),
-		"3": "DROP TABLE hydra_oauth2_pkce",
-		"4": fmt.Sprintf("ALTER TABLE hydra_oauth2_%s DROP COLUMN active", table),
-		"5": fmt.Sprintf("DROP INDEX hydra_oauth2_%s_request_id_idx ON hydra_oauth2_%s", table, table),
-		"6": fmt.Sprintf("DROP INDEX hydra_oauth2_%s_requested_at_idx ON hydra_oauth2_%s", table, table),
+func sqlSchemaDown(db, table, id string) string {
+	shared := []string{
+		fmt.Sprintf(`DROP TABLE %s)`, table),
+		fmt.Sprintf("ALTER TABLE hydra_oauth2_%s DROP COLUMN subject", table),
+		"DROP TABLE hydra_oauth2_pkce",
+		fmt.Sprintf("ALTER TABLE hydra_oauth2_%s DROP COLUMN active", table),
+		fmt.Sprintf("DROP INDEX hydra_oauth2_%s_request_id_idx ON hydra_oauth2_%s", table, table),
+		fmt.Sprintf("DROP INDEX hydra_oauth2_%s_requested_at_idx ON hydra_oauth2_%s", table, table),
 	}
 
-	return schemas[id]
+	m := map[string]map[string]string{
+		"mysql": {
+			"1": shared[0],
+			"2": shared[1],
+			"3": shared[2],
+			"4": shared[3],
+			"5": shared[4],
+			"6": shared[5],
+		},
+		"postgres": {
+			"1": shared[0],
+			"2": shared[1],
+			"3": shared[2],
+			"4": shared[3],
+			"5": shared[4],
+			"6": shared[5],
+		},
+	}
+
+	return m[db][id]
 }
 
 const (
@@ -210,6 +248,7 @@ var sqlParams = []string{
 }
 
 type sqlData struct {
+	PK            int       `db:"pk"`
 	Signature     string    `db:"signature"`
 	Request       string    `db:"request_id"`
 	RequestedAt   time.Time `db:"requested_at"`
