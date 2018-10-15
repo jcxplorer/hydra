@@ -21,14 +21,13 @@
 package consent
 
 import (
+	"context"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 	"time"
-
-	"context"
 
 	"github.com/gorilla/sessions"
 	"github.com/julienschmidt/httprouter"
